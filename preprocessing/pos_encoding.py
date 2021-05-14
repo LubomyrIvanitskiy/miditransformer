@@ -7,7 +7,7 @@ Periods should be integers
 """
 
 
-def get_int_periods(base, count, multiplier=100):
+def get_int_periods(base, count, multiplier=10):
     """
     Get periods in form base**i for i in count converted to integers by multiplying by multiplier and then rounding
     Example:
