@@ -164,9 +164,8 @@ class Transformer(tf.keras.Model):
 
         self.final_layer = tf.keras.layers.Dense(d_model)
 
-    def call(self, inp, tar, training, enc_padding_mask,
-             look_ahead_mask, dec_padding_mask):
-        enc_output = self.tokenizer(inp, training, enc_padding_mask)  # (batch_size, inp_seq_len, d_model)
+    def call(self, inp, training):
+        enc_output = self.tokenizer(inp, training, None)  # (batch_size, inp_seq_len, d_model)
 
         final_output = self.final_layer(enc_output)  # (batch_size, tar_seq_len, target_vocab_size)
 
@@ -225,7 +224,7 @@ def test_multihead():
     temp_mha = MultiHeadAttention(d_model=512, num_heads=8)
     y = tf.random.uniform((1, 60, 512))  # (batch_size, encoder_sequence, d_model)
     out, attn = temp_mha(y, k=y, q=y, mask=None)
-    print('out.shape', out.shape, 'attn.shape', attn.shape)
+    print('test_multihead out.shape', out.shape, 'attn.shape', attn.shape)
 
 
 def test_feed_forward():
@@ -251,6 +250,21 @@ def test_encoder():
 
     print('test_encoder', sample_encoder_output.shape)  # (batch_size, input_seq_len, d_model)
 
+def test_transformer():
+    """
+    NOT WORKING
+    :return:
+    """
+    transformer = Transformer(num_layers=2, d_model=512, num_heads=8,
+                             dff=2048)
+    temp_input = tf.random.uniform((64, 62), dtype=tf.int64, minval=0, maxval=200)
+
+    sample_transformer_output = transformer(temp_input, temp_input, training=False, enc_padding_mask=None,
+                                            look_ahead_mask=None,
+                                            dec_padding_mask=None)
+
+    print('test_transformer', sample_transformer_output.shape)  # (batch_size, input_seq_len, d_model)
+
 
 import midiwrap as mw
 from preprocessing import note_encoder as ne
@@ -262,22 +276,54 @@ def test_pipeline():
     midi = mw.MidiFile('data/fur_elise.mid')
     dim = 12
     d_model = dim * 6
+    num_heads = 6
     track_names = midi.track_names()
 
-    X = ne.encode_notes(midi, P=coprime_P, track_name=track_names[0])
+    X = ne.encode_notes(midi, P=coprime_P, track_name=track_names[0])[:200]
 
-    temp_mha = MultiHeadAttention(d_model=d_model, num_heads=6)
-    y = tf.random.uniform((1, 60, 512))  # (batch_size, encoder_sequence, d_model)
-    out, attn = temp_mha(X[None], k=X[None], q=X[None], mask=None)
-    print('out.shape', out.shape, 'attn.shape', attn.shape)
+    # temp_mha = MultiHeadAttention(d_model=d_model, num_heads=num_heads)
+    # y = tf.random.uniform((1, 60, 512))  # (batch_size, encoder_sequence, d_model)
+    # out, attn = temp_mha(X[None], k=X[None], q=X[None], mask=None)
+    # print('KOOKOO out', out.shape)  # (batch_size, input_seq_len, d_model)
+    ###############
+    # sample_encoder_layer = EncoderLayer(d_model, num_heads, 2048)
+    #
+    # sample_encoder_layer_output = sample_encoder_layer(
+    #     X[None], False, None)
+    #
+    # print('BOOBOO test_encoder_layer', sample_encoder_layer_output.shape)  # (batch_size, input_seq_len, d_model)
+    # out = sample_encoder_layer_output
+    ##################
+
+    # sample_encoder = Encoder(num_layers=4, d_model=d_model, num_heads=num_heads,
+    #                          dff=2048)
+    #
+    # sample_encoder_output = sample_encoder(X[None], training=False, mask=None)
+    #
+    # print('DOODOO', sample_encoder_output.shape)  # (batch_size, input_seq_len, d_model)
+    # out = sample_encoder_output
+    ####################
+    transformer = Transformer(num_layers=4, d_model=d_model, num_heads=num_heads,
+                              dff=2048)
+
+    transformer.compile(loss='MSE', optimizer="adam")
+
+    transformer.fit(X[None], X[None], epochs=5000)
+
+    sample_transformer_output = transformer(X[None], training=False)
+
+    print('MOOMOO test_transformer', sample_transformer_output.shape)  # (batch_size, input_seq_len, d_model)
+    out = sample_transformer_output
+    ####################
+    # print('test_pipeline out.shape', out.shape, 'attn.shape', attn.shape)
     decoded = ne.decode_X(out[0].numpy(), P=coprime_P)
-    # decoded = ne.decode_X(X, emb_dim=dim)
+
 
     melody = mw.MelodyBuilder()
     instrument = 'piano'
     for pitch, time, duration in decoded:
         melody.add_note(pitch%127, time%ne.max_time, duration%ne.max_duration, instrument)
-    melody.write_to_file('multihead_melody2.mid')
+    melody.write_to_file('transformer_melody4.mid')
     pass
 
 
@@ -287,5 +333,6 @@ if __name__ == "__main__":
     # test_feed_forward()
     # test_encoder_layer()
     # test_encoder()
+    # test_transformer()
     test_pipeline()
     pass
