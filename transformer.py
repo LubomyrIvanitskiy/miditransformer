@@ -267,6 +267,7 @@ def test_transformer():
 
 
 import midiwrap as mw
+import os
 from preprocessing import note_encoder as ne
 
 coprime_P = [47, 43, 41, 37, 31, 29, 23, 19, 17, 13, 11, 7]
@@ -308,7 +309,17 @@ def test_pipeline():
 
     transformer.compile(loss='MSE', optimizer="adam")
 
-    transformer.fit(X[None], X[None], epochs=5000)
+    checkpoint_path = "training_1/cp.ckpt"
+    checkpoint_dir = os.path.dirname(checkpoint_path)
+
+    # Create a callback that saves the model's weights
+    cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
+                                                     save_weights_only=True,
+                                                     verbose=1)
+
+    transformer.fit(X[None], X[None], epochs=100, callbacks=[cp_callback])
+
+    # model.load_weights(checkpoint_path)
 
     sample_transformer_output = transformer(X[None], training=False)
 
