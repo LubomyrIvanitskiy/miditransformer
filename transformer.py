@@ -146,7 +146,6 @@ class Encoder(tf.keras.layers.Layer):
         seq_len = tf.shape(x)[1]
 
         # adding embedding and position encoding.
-        x *= tf.math.sqrt(tf.cast(self.d_model, tf.float32))
 
         x = self.dropout(x, training=training)
 
@@ -229,6 +228,64 @@ def test_multihead():
     print('out.shape', out.shape, 'attn.shape', attn.shape)
 
 
+def test_feed_forward():
+    sample_ffn = point_wise_feed_forward_network(512, 2048)
+    print('test_feed_forward', sample_ffn(tf.random.uniform((64, 50, 512))).shape)
+
+
+def test_encoder_layer():
+    sample_encoder_layer = EncoderLayer(512, 8, 2048)
+
+    sample_encoder_layer_output = sample_encoder_layer(
+        tf.random.uniform((64, 43, 512)), False, None)
+
+    print('test_encoder_layer', sample_encoder_layer_output.shape)  # (batch_size, input_seq_len, d_model)
+
+
+def test_encoder():
+    sample_encoder = Encoder(num_layers=2, d_model=512, num_heads=8,
+                             dff=2048)
+    temp_input = tf.random.uniform((64, 62), dtype=tf.int64, minval=0, maxval=200)
+
+    sample_encoder_output = sample_encoder(temp_input, training=False, mask=None)
+
+    print('test_encoder', sample_encoder_output.shape)  # (batch_size, input_seq_len, d_model)
+
+
+import midiwrap as mw
+from preprocessing import note_encoder as ne
+
+coprime_P = [47, 43, 41, 37, 31, 29, 23, 19, 17, 13, 11, 7]
+
+
+def test_pipeline():
+    midi = mw.MidiFile('data/fur_elise.mid')
+    dim = 12
+    d_model = dim * 6
+    track_names = midi.track_names()
+
+    X = ne.encode_notes(midi, P=coprime_P, track_name=track_names[0])
+
+    temp_mha = MultiHeadAttention(d_model=d_model, num_heads=6)
+    y = tf.random.uniform((1, 60, 512))  # (batch_size, encoder_sequence, d_model)
+    out, attn = temp_mha(X[None], k=X[None], q=X[None], mask=None)
+    print('out.shape', out.shape, 'attn.shape', attn.shape)
+    decoded = ne.decode_X(out[0].numpy(), P=coprime_P)
+    # decoded = ne.decode_X(X, emb_dim=dim)
+
+    melody = mw.MelodyBuilder()
+    instrument = 'piano'
+    for pitch, time, duration in decoded:
+        melody.add_note(pitch%127, time%ne.max_time, duration%ne.max_duration, instrument)
+    melody.write_to_file('multihead_melody2.mid')
+    pass
+
+
 if __name__ == "__main__":
-    test_attention()
-    test_multihead()
+    # test_attention()
+    # test_multihead()
+    # test_feed_forward()
+    # test_encoder_layer()
+    # test_encoder()
+    test_pipeline()
+    pass
