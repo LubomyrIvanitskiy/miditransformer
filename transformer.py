@@ -270,17 +270,15 @@ import midiwrap as mw
 import os
 from preprocessing import note_encoder as ne
 
-coprime_P = [47, 43, 41, 37, 31, 29, 23, 19, 17, 13, 11, 7]
-
 
 def test_pipeline():
     midi = mw.MidiFile('data/fur_elise.mid')
-    dim = 12
+    dim = 32
     d_model = dim * 6
     num_heads = 6
     track_names = midi.track_names()
 
-    X = ne.encode_notes(midi, P=coprime_P, track_name=track_names[0])[:200]
+    X = ne.encode_notes(midi, P=ne.coprime_P, track_name=track_names[0])
 
     # temp_mha = MultiHeadAttention(d_model=d_model, num_heads=num_heads)
     # y = tf.random.uniform((1, 60, 512))  # (batch_size, encoder_sequence, d_model)
@@ -312,29 +310,40 @@ def test_pipeline():
     checkpoint_path = "training_1/cp.ckpt"
     checkpoint_dir = os.path.dirname(checkpoint_path)
 
-    # Create a callback that saves the model's weights
-    cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
-                                                     save_weights_only=True,
-                                                     verbose=1)
+    # checkpoint_path = "training_2/cp.ckpt"
+    # checkpoint_dir = os.path.dirname(checkpoint_path)
+    #
+    # # Create a callback that saves the model's weights
+    # cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
+    #                                                  save_weights_only=True,
+    #                                                  verbose=1)
+    #
+    # transformer.fit(X[None], X[None], epochs=5000, callbacks=[cp_callback])
 
-    transformer.fit(X[None], X[None], epochs=100, callbacks=[cp_callback])
-
-    # model.load_weights(checkpoint_path)
+    transformer.load_weights("training_1/cp.ckpt")
 
     sample_transformer_output = transformer(X[None], training=False)
 
     print('MOOMOO test_transformer', sample_transformer_output.shape)  # (batch_size, input_seq_len, d_model)
     out = sample_transformer_output
+
+    #######
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(2, 1)
+    ax[0].imshow(X, aspect='auto')
+    ax[1].imshow(out[0].numpy(), aspect='auto')
+    plt.show()
     ####################
     # print('test_pipeline out.shape', out.shape, 'attn.shape', attn.shape)
-    decoded = ne.decode_X(out[0].numpy(), P=coprime_P)
+    decoded = ne.decode_X(out[0].numpy(), P=ne.coprime_P)
+    # decoded = ne.decode_X(X, P=ne.coprime_P)
 
 
     melody = mw.MelodyBuilder()
     instrument = 'piano'
     for pitch, time, duration in decoded:
         melody.add_note(pitch%127, time%ne.max_time, duration%ne.max_duration, instrument)
-    melody.write_to_file('transformer_melody4.mid')
+    melody.write_to_file('transformer_melody_cossim_saved.mid')
     pass
 
 

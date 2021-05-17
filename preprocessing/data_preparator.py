@@ -14,7 +14,7 @@ class DataGenerator:
 
     def _data_generator(self):
         for i, f in enumerate(self.test):
-            x = ne.encode_notes(midiwrap.MidiFile(f), emb_dim=emb_dim)
+            x = ne.encode_notes(midiwrap.MidiFile(f), P=ne.coprime_P)
             yield x, f, i
 
     def __next__(self):

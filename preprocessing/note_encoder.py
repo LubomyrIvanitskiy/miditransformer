@@ -2,10 +2,12 @@ import numpy as np
 import midiwrap
 from preprocessing import pos_encoding as pe
 
-max_time = 10  # sec
+max_time = 10_000  # sec
 ms_in_sec = 1000
 max_pitch = 127
 max_duration = 5  # sec
+
+coprime_P = [11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151][::-1]
 
 
 def compute_base(emb_dim, max_value):
@@ -70,8 +72,6 @@ if __name__ == "__main__":
     dim = 12
     track_names = midi.track_names()
 
-    coprime_P = np.asarray([47, 43, 41, 37, 31, 29, 23, 19, 17, 13, 11, 7])
-
     X = encode_notes(midi, P=coprime_P, track_name=track_names[0])
     # X[0][0]=0.5
     decoded = decode_X(X, P=coprime_P)
@@ -81,4 +81,4 @@ if __name__ == "__main__":
     instrument = 'piano'
     for pitch, time, duration in decoded:
         melody.add_note(pitch%127, time%max_time, duration%max_duration, instrument)
-    melody.write_to_file('decoded_melody4.mid')
+    melody.write_to_file('decoded_melody21.mid')
